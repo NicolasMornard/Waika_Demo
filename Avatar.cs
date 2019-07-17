@@ -32,6 +32,7 @@ public class Avatar : Character
 		CurrentAttackState = AvatarState.AttackNone;
 		foreach (Transform child in transform.parent)
 		{
+			// TODO: replace "MovementTarget" with static readonly value
 			if (child.name == "MovementTarget")
 			{
 				LookAtTargetTransform = child.transform;
@@ -91,6 +92,7 @@ public class Avatar : Character
 		Vector2 targetVelocity = new Vector2(horizontalInput, verticalInput);
 		rigidbodySprite.velocity = targetVelocity * MaxSpeed;
 
+		// TODO: replace "space" with static Dash input
 		if (Input.GetKeyDown("space"))
 		{
 			Dash();
@@ -123,6 +125,7 @@ public class Avatar : Character
 	private void MapStateAvatar()
 	{
 		MapState();
+		// TODO: replace "" with static inputs
 		if (Input.GetKeyDown("f"))
 		{
 			CurrentAttackState = AvatarState.SpecialAttack1;

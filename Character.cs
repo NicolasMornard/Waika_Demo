@@ -165,6 +165,7 @@ public class Character : MonoBehaviour
 
 	protected void SetCurrentOrientationState()
 	{
+		// TODO: replace hardcoded values with public variables so Designers can set angle thresholds
 		// Moving Up
 		if (CurrentDirectionAngle2D >= -10.0f && CurrentDirectionAngle2D < 10.0f)
 		{
