@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+
+using UnityEngine;
 
 public class Avatar : Character
 {
@@ -28,6 +30,17 @@ public class Avatar : Character
 	void Start()
 	{
 		CurrentAttackState = AvatarState.AttackNone;
+		foreach (Transform child in transform.parent)
+		{
+			if (child.name == "MovementTarget")
+			{
+				LookAtTargetTransform = child.transform;
+				LookAtTargetTransform.position = new Vector3(transform.position.x - 1.0f,
+					transform.position.y - 1.0f,
+					transform.position.z);
+				break;
+			}
+		}
 		SetLastFramValuesAvatar();
 	}
 
@@ -73,12 +86,31 @@ public class Avatar : Character
 		verticalInput = Input.GetAxis(VERTICAL_INPUT_NAME);
 		horizontalInput = Input.GetAxis(HORIZONTAL_INPUT_NAME);
 
+		SetTargetPosition();
+
 		Vector2 targetVelocity = new Vector2(horizontalInput, verticalInput);
 		rigidbodySprite.velocity = targetVelocity * MaxSpeed;
 
 		if (Input.GetKeyDown("space"))
 		{
 			Dash();
+		}
+	}
+
+
+	// In the case of the Avatar, the Target is a point that it follows and turn toward.
+	//	- When using mouse (TODO): Target is at the location of the click (Diablo Style)
+	//	- When using a Gamepad (Default): Target moves around the Avatar, controlled by the joypad
+	private void SetTargetPosition()
+	{
+		//TODO: Handle moving with mouse click (Diablo Style)
+
+		// Using Controller or Keyboard (AWSD)
+		if (horizontalInput != 0.0f || verticalInput != 0.0f)
+		{
+			LookAtTargetTransform.position = new Vector3(transform.position.x + horizontalInput,
+					transform.position.y + verticalInput,
+					transform.position.z);
 		}
 	}
 
@@ -143,7 +175,7 @@ public class Avatar : Character
 		if (CurrentOrientation != LastFrameOrientation ||
 			CurrentMovingState != LastFrameMovingState)
 		{
-			SetMovingAnimation();
+			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 			SetSpriteDirection();
 		}
 	}
@@ -152,11 +184,6 @@ public class Avatar : Character
 	{
 		rigidbodySprite.velocity = Vector3.zero;
 		rigidbodySprite.angularVelocity = 0.0f;
-	}
-
-	private void SetMovingAnimation()
-	{
-		anim.SetTrigger(CurrentMovingState.ToString() + CurrentOrientation.ToString());
 	}
 
 	private void SetFlinchAnimation()
@@ -189,30 +216,6 @@ public class Avatar : Character
 			case AvatarState.SpecialAttack1:
 				anim.SetTrigger(CurrentAttackState.ToString());
 				break;
-		}
-	}
-
-	protected new void SetMovementValues()
-	{
-		CalculateCurrentDirection();
-		CalculateCurrentDirectionAngle2D();
-		CalculateCurrentSpeed();
-	}
-
-	private new void CalculateCurrentDirection()
-	{
-		if (transform.position != LastFramePosition)
-		{
-			CurrentDirection = transform.position - LastFramePosition;
-		}
-	}
-
-	private new void CalculateCurrentDirectionAngle2D()
-	{
-		CurrentDirectionAngle2D = Vector3.Angle(transform.up, CurrentDirection);
-		if (rigidbodySprite.velocity.x < 0)
-		{
-			CurrentDirectionAngle2D *= -1;
 		}
 	}
 

@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Text;
+
+using UnityEngine;
 
 public class Character : MonoBehaviour
 {
@@ -8,7 +11,7 @@ public class Character : MonoBehaviour
 	public float AnimationSpeed		= 0.75f;
 	public float ThresholdRun		= 0.04f;
 	public float ThresholdIdle		= 0.015f;
-	public float ThresholdDash		= 0.7f;
+	public float ThresholdDash		= 1.6f;
 	public float ThresholdMoving	= 0.01f;
 	public float Threshold			= 10.0f;
 	public float DiagonalAngle		= 70.0f;
@@ -90,6 +93,12 @@ public class Character : MonoBehaviour
 	{
 		SetMovementValues();
 		MapState();
+
+		if (CurrentOrientation != LastFrameOrientation ||
+			CurrentMovingState != LastFrameMovingState)
+		{
+			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
+		}
 		SetSpriteDirection();
 		SetLastFramValues();
 	}
@@ -122,7 +131,7 @@ public class Character : MonoBehaviour
 
 		if (CurrentMovingState == CharacterState.Walk ||
 			CurrentMovingState == CharacterState.Run ||
-			(LookAtTargetTransform != null && LastFrameTargetPosistion != LookAtTargetTransform.position))
+			(LastFrameTargetPosistion != LookAtTargetTransform.position))
 		{
 			SetCurrentOrientationState();
 		}
@@ -130,7 +139,7 @@ public class Character : MonoBehaviour
 
 	protected void CalculateCurrentSpeed()
 	{
-		CurrentSpeed = CurrentDirection.magnitude;
+		CurrentSpeed = (transform.position - LastFramePosition).magnitude;
 	}
 
 	protected void SetMovementValues()
@@ -142,7 +151,7 @@ public class Character : MonoBehaviour
 
 	protected void CalculateCurrentDirection()
 	{
-		CurrentDirection = transform.position - LookAtTargetTransform.position;
+		CurrentDirection = LookAtTargetTransform.position - transform.position;
 	}
 
 	protected void CalculateCurrentDirectionAngle2D()
@@ -220,11 +229,22 @@ public class Character : MonoBehaviour
 				break;
 		}
 		transform.localScale = scale;
+	}
 
-		if (GetComponent<Epervier>() != null)
+	protected void SetMovingAnimation(List<string> animationNameBits)
+	{
+		if (animationNameBits == null || animationNameBits.Count == 0)
 		{
-			Debug.Log(CurrentOrientation);
+			Debug.LogError("Error: animationNameBits variable is null or empty!");
+			return;
 		}
+		StringBuilder animationNameBuilder = new StringBuilder();
+		foreach (string animationNameBit in animationNameBits)
+		{
+			animationNameBuilder.Append(animationNameBit);
+		}
+
+		anim.SetTrigger(animationNameBuilder.ToString());
 	}
 
 	protected void SetLastFramValues()
@@ -233,10 +253,7 @@ public class Character : MonoBehaviour
 		LastFrameMovingState		= CurrentMovingState;
 		LastFramePosition			= transform.position;
 		LastFrameFlinchState		= CurrentFlinchState;
-		if (LookAtTargetTransform != null)
-		{
-			LastFrameTargetPosistion = LookAtTargetTransform.position;
-		}
+		LastFrameTargetPosistion	= LookAtTargetTransform.position;
 	}
 
 	// Private Methods

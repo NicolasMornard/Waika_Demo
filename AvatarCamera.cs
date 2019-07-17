@@ -2,23 +2,26 @@
 
 public class AvatarCamera : MonoBehaviour
 {
-	public Transform AvatarTransform;
+	public Transform TargetTransform;
 
 	// Start is called before the first frame update
 	void Start()
 	{
-		if (AvatarTransform == null)
+		// Following Avatar if no target set
+		if (TargetTransform == null)
 		{
-			AvatarTransform = FindObjectOfType<Avatar>().transform;
+			TargetTransform = FindObjectOfType<Avatar>().transform;
 		}
 	}
 
 	// Update is called once per frame
 	void LateUpdate()
 	{
+		// Following Target
+		// TODO: Smooth camera movements
 		Vector3 cameraPosition = transform.position;
-		cameraPosition.x = AvatarTransform.position.x;
-		cameraPosition.y = AvatarTransform.position.y;
+		cameraPosition.x = TargetTransform.position.x;
+		cameraPosition.y = TargetTransform.position.y;
 		transform.position = cameraPosition;
 	}
 }
