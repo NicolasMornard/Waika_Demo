@@ -1,9 +1,3 @@
-﻿public class Epervier : Character
+﻿public class Epervier : Enemy
 {
-	// Public Getters
-
-	void Start()
-	{
-		LookAtTargetTransform = FindObjectOfType<Avatar>().transform;
-	}
 }

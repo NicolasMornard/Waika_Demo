@@ -6,9 +6,11 @@ using UnityEngine;
 public class Character : MonoBehaviour
 {
 	// Public - Inspector
+	public float HP					= 10.0f;
 	public float MaxSpeed			= 10.0f;
 	public float DashSpeed			= 50.0f;
 	public float AnimationSpeed		= 0.75f;
+	public float FlinchDuration		= 0.5f;
 	public float ThresholdRun		= 0.04f;
 	public float ThresholdIdle		= 0.015f;
 	public float ThresholdDash		= 1.6f;
@@ -54,19 +56,21 @@ public class Character : MonoBehaviour
 	public CharacterState LastFrameMovingState	{ get; protected set; }
 	public CharacterState CurrentOrientation	{ get; protected set; }
 	public CharacterState LastFrameOrientation	{ get; protected set; }
-	public CharacterState CurrentFlinchState	{ get; protected set; }
+	public CharacterState CurrentFlinchState	{ get; protected set; } = CharacterState.FlinchNone;
 	public CharacterState LastFrameFlinchState	{ get; protected set; }
 
 	// Protected
 	protected Animator anim;
 	protected Rigidbody2D rigidbodySprite;
-	protected BoxCollider2D boxCollider2D;
+	protected BoxCollider2D[] boxCollider2DList;
+	protected SpriteRenderer spriteRenderer;
 
 	// Protected Constants
 	protected readonly string VERTICAL_INPUT_NAME	= "Vertical";
 	protected readonly string HORIZONTAL_INPUT_NAME	= "Horizontal";
 
 	// Private
+	private int flinchTimer = 0;
 	private readonly Vector2 VELOCITY_STOP = new Vector2(0.0f, 0.0f);
 
 	void Awake()
@@ -81,7 +85,10 @@ public class Character : MonoBehaviour
 		LastFramePosition = transform.position;
 
 		// BoxCollider2D
-		boxCollider2D = GetComponent<BoxCollider2D>();
+		boxCollider2DList = GetComponents<BoxCollider2D>();
+
+		// SpriteRenderer
+		spriteRenderer = GetComponent<SpriteRenderer>();
 
 		// Avatar State
 		CurrentMovingState = CharacterState.Idle;
@@ -95,20 +102,32 @@ public class Character : MonoBehaviour
 		MapState();
 
 		if (CurrentOrientation != LastFrameOrientation ||
-			CurrentMovingState != LastFrameMovingState)
+			CurrentMovingState != LastFrameMovingState &&
+			CurrentMovingState != CharacterState.AnimationNone)
 		{
 			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 		}
 		SetSpriteDirection();
 		SetLastFramValues();
+
+		if (this is Enemy)
+		{
+			GetComponent<Enemy>().EnemyUpdate();
+		}
 	}
 
-	void LateUpdate()
+	private void FixedUpdate()
 	{
-		
+		HandleFlinch();
 	}
 
 	// Public Methods
+
+	public void ReceiveAttack(float dammage = 0.0f)
+	{
+		CurrentFlinchState = CharacterState.Flinch;
+		HP -= dammage;
+	}
 
 	public void EndFlinch()
 	{
@@ -131,7 +150,7 @@ public class Character : MonoBehaviour
 
 		if (CurrentMovingState == CharacterState.Walk ||
 			CurrentMovingState == CharacterState.Run ||
-			(LastFrameTargetPosistion != LookAtTargetTransform.position))
+			(LookAtTargetTransform != null && LastFrameTargetPosistion != LookAtTargetTransform.position))
 		{
 			SetCurrentOrientationState();
 		}
@@ -151,13 +170,20 @@ public class Character : MonoBehaviour
 
 	protected void CalculateCurrentDirection()
 	{
-		CurrentDirection = LookAtTargetTransform.position - transform.position;
+		if (LookAtTargetTransform != null)
+		{
+			CurrentDirection = LookAtTargetTransform.position - transform.position;
+		}
+		else
+		{
+			CurrentDirection = LastFramePosition - transform.position;
+		}
 	}
 
 	protected void CalculateCurrentDirectionAngle2D()
 	{
 		CurrentDirectionAngle2D = Vector3.Angle(transform.up, CurrentDirection);
-		if (transform.position.x > LookAtTargetTransform.position.x)
+		if (LookAtTargetTransform != null && transform.position.x > LookAtTargetTransform.position.x)
 		{
 			CurrentDirectionAngle2D *= -1;
 		}
@@ -232,15 +258,15 @@ public class Character : MonoBehaviour
 		transform.localScale = scale;
 	}
 
-	protected void SetMovingAnimation(List<string> animationNameBits)
+	protected void SetMovingAnimation(List<string> animationNameParts)
 	{
-		if (animationNameBits == null || animationNameBits.Count == 0)
+		if (animationNameParts == null || animationNameParts.Count == 0)
 		{
 			Debug.LogError("Error: animationNameBits variable is null or empty!");
 			return;
 		}
 		StringBuilder animationNameBuilder = new StringBuilder();
-		foreach (string animationNameBit in animationNameBits)
+		foreach (string animationNameBit in animationNameParts)
 		{
 			animationNameBuilder.Append(animationNameBit);
 		}
@@ -254,7 +280,20 @@ public class Character : MonoBehaviour
 		LastFrameMovingState		= CurrentMovingState;
 		LastFramePosition			= transform.position;
 		LastFrameFlinchState		= CurrentFlinchState;
-		LastFrameTargetPosistion	= LookAtTargetTransform.position;
+		if (LookAtTargetTransform != null)
+		{
+			LastFrameTargetPosistion = LookAtTargetTransform.position;
+		}
+	}
+
+	protected void Die()
+	{
+		if (GetComponent<Avatar>() != null)
+		{
+			GetComponent<Avatar>().Die();
+			return;
+		}
+		Destroy(gameObject);
 	}
 
 	// Private Methods
@@ -281,6 +320,38 @@ public class Character : MonoBehaviour
 		else
 		{
 			CurrentMovingState = CharacterState.Dash;
+		}
+	}
+
+	// Private methods
+
+	private void HandleFlinch()
+	{
+		if (CurrentFlinchState == CharacterState.Flinch)
+		{
+			if (flinchTimer >= FlinchDuration * (1.0f / Time.deltaTime))
+			{
+				if (HP <= 0.0f)
+				{
+					Die();
+				}
+				else
+				{
+					CurrentFlinchState = CharacterState.FlinchNone;
+					flinchTimer = 0;
+					spriteRenderer.color = Color.white;
+				}
+			}
+			else
+			{
+				flinchTimer++;
+				spriteRenderer.color = Color.red;
+			}
+		}
+		else if (flinchTimer > 0 || spriteRenderer.color != Color.white)
+		{
+			flinchTimer = 0;
+			spriteRenderer.color = Color.white;
 		}
 	}
 }

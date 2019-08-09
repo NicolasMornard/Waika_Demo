@@ -1,9 +1,14 @@
 ﻿using System.Collections.Generic;
 
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Avatar : Character
 {
+	// Public - Inspector
+	public float Dammage = 5.0f;
+	public float DammageSpecialAttack1 = 25.0f;
+
 	// Enum
 	public enum AvatarState
 	{
@@ -14,6 +19,9 @@ public class Avatar : Character
 		AttackNone,
 		StandardAttack,
 		SpecialAttack1,
+		//Equipment
+		EquipmentNone,
+		EquipmentHammer,
 	};
 
 	// Public Getters
@@ -21,14 +29,19 @@ public class Avatar : Character
 	public AvatarState LastFrameAttackState			{ get; private set; }
 	public AvatarState CurrentSlideState			{ get; private set; }
 	public AvatarState LastFrameSlideState			{ get; private set; }
+	public AvatarState CurrentEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
+	public AvatarState LastFrameEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
 
 	// Private
 	private float verticalInput;
 	private float horizontalInput;
+	private Vector2 boxColliderAttackSize;
 
 	// Start is called before the first frame update
 	void Start()
 	{
+		boxColliderAttackSize = boxCollider2DList[1].size;
+		boxCollider2DList[1].size = new Vector2(0.0f, 0.0f);
 		CurrentAttackState = AvatarState.AttackNone;
 		foreach (Transform child in transform.parent)
 		{
@@ -48,30 +61,38 @@ public class Avatar : Character
 	// Update is called once per frame
 	void Update()
 	{
-		if (CurrentAttackState != AvatarState.SpecialAttack1)
+		if (CurrentAttackState != AvatarState.SpecialAttack1 && CurrentSlideState == AvatarState.SlideNone)
 		{
 			MoveAvatar();
 		}
 		SetMovementValues();
 
 		MapStateAvatar();
-		boxCollider2D.enabled = CurrentMovingState != CharacterState.Dash;
+		boxCollider2DList[0].enabled = CurrentMovingState != CharacterState.Dash;
 
 		SetAvatarAnimation();
 		SetSpriteDirection();
 		SetLastFramValuesAvatar();
-	}
-
-	private void LateUpdate()
-	{
+		Debug.Log(CurrentSlideState);
 	}
 
 	// Public Methods
+
+	public void SetEquipmentState(AvatarState equipmentState)
+	{
+		CurrentEquipmentState = equipmentState;
+	}
+
+	public void SetSlideState(AvatarState slideState)
+	{
+		CurrentSlideState = slideState;
+	}
 
 	public void EndAttack()
 	{
 		CurrentAttackState = AvatarState.AttackNone;
 		CurrentMovingState = CharacterState.Idle;
+		boxCollider2DList[1].size = new Vector2(0.0f, 0.0f);
 	}
 
 	public void EndSlide()
@@ -99,6 +120,10 @@ public class Avatar : Character
 		}
 	}
 
+	public new void Die()
+	{
+		SceneManager.LoadScene("Level_1", LoadSceneMode.Single);
+	}
 
 	// In the case of the Avatar, the Target is a point that it follows and turn toward.
 	//	- When using mouse (TODO): Target is at the location of the click (Diablo Style)
@@ -126,21 +151,18 @@ public class Avatar : Character
 	{
 		MapState();
 		// TODO: replace "" with static inputs
-		if (Input.GetKeyDown("f"))
+		if (CurrentEquipmentState == AvatarState.EquipmentHammer)
 		{
-			CurrentAttackState = AvatarState.SpecialAttack1;
-			CurrentMovingState = CharacterState.AnimationNone;
-		}
-		else if (Input.GetKeyDown("e"))
-		{
-			CurrentAttackState = AvatarState.StandardAttack;
-			CurrentMovingState = CharacterState.AnimationNone;
-		}
-		// Testing slide
-		else if (Input.GetKeyDown("x"))
-		{
-			CurrentSlideState = AvatarState.Slide;
-			CurrentMovingState = CharacterState.AnimationNone;
+			if (Input.GetButton("Fire2"))
+			{
+				CurrentAttackState = AvatarState.SpecialAttack1;
+				CurrentMovingState = CharacterState.AnimationNone;
+			}
+			else if (Input.GetButton("Fire1"))
+			{
+				CurrentAttackState = AvatarState.StandardAttack;
+				CurrentMovingState = CharacterState.AnimationNone;
+			}
 		}
 	}
 
@@ -153,10 +175,13 @@ public class Avatar : Character
 			return;
 		}
 
-		if (CurrentSlideState != LastFrameSlideState &&
-			CurrentSlideState != AvatarState.SlideNone)
+		if (CurrentSlideState != AvatarState.SlideNone)
 		{
-			SetSlideAnimation();
+			if (CurrentSlideState != LastFrameSlideState)
+			{
+				SetSlideAnimation();
+			}
+
 			return;
 		}
 
@@ -164,6 +189,7 @@ public class Avatar : Character
 			CurrentAttackState != AvatarState.AttackNone)
 		{
 			SetAttackAnimation();
+			boxCollider2DList[1].size = boxColliderAttackSize;
 			if (CurrentAttackState == AvatarState.SpecialAttack1)
 			{
 				return;
@@ -176,7 +202,8 @@ public class Avatar : Character
 		}
 
 		if (CurrentOrientation != LastFrameOrientation ||
-			CurrentMovingState != LastFrameMovingState)
+			CurrentMovingState != LastFrameMovingState &&
+			CurrentMovingState != CharacterState.AnimationNone)
 		{
 			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 			SetSpriteDirection();
@@ -227,5 +254,6 @@ public class Avatar : Character
 		SetLastFramValues();
 		LastFrameAttackState = CurrentAttackState;
 		LastFrameSlideState = CurrentSlideState;
+		LastFrameEquipmentState = CurrentEquipmentState;
 	}
 }
