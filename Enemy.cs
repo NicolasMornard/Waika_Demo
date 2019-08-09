@@ -10,6 +10,7 @@ public class Enemy : Character
 	public float DistanceDetectionAvatar		= 2.0f;
 	public List<Transform> Waypoints;
 	public float DistanceToReachWaypoint		= 0.3f;
+	public bool LoopWaypoints					= true;
 
 	// Enum
 	public enum EnemyState
@@ -60,7 +61,7 @@ public class Enemy : Character
 		}
 		HandleWaypoints();
 		MoveTowardWaypoint();
-		DetectAvatar();
+		//DetectAvatar();
 		SetLastFramValuesEnemy();
 	}
 
@@ -120,6 +121,20 @@ public class Enemy : Character
 		{
 			return;
 		}
+
+		if (currentWaypointIndex >= Waypoints.Count)
+		{
+			if (LoopWaypoints)
+			{
+				currentWaypointIndex = 0;
+			}
+			else
+			{
+				CurrentWaypointState = EnemyState.DetectionIdle;
+				return;
+			}
+		}
+
 		LookAtTargetTransform = Waypoints[currentWaypointIndex].transform;
 		if (CurrentWaypointState == EnemyState.ReachedWaypoint)
 		{
@@ -129,10 +144,6 @@ public class Enemy : Character
 			startJourneyPosition = transform.position;
 			journeyLength = Vector3.Distance(CurrentWaypointPosition, transform.position);
 			currentWaypointIndex++;
-			if (currentWaypointIndex >= Waypoints.Count)
-			{
-				currentWaypointIndex = 0;
-			}
 		}
 
 		if (journeyLength <= DistanceToReachWaypoint ||
@@ -167,7 +178,6 @@ public class Enemy : Character
 				startJourneyPosition = transform.position;
 				journeyLength = Vector3.Distance(CurrentWaypointPosition, transform.position);
 				CurrentDetectionState = EnemyState.LookingForAvatar;
-				Debug.Log(CurrentDetectionState);
 			}
 			else
 			{

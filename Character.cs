@@ -6,17 +6,18 @@ using UnityEngine;
 public class Character : MonoBehaviour
 {
 	// Public - Inspector
-	public float HP					= 10.0f;
-	public float MaxSpeed			= 10.0f;
-	public float DashSpeed			= 50.0f;
-	public float AnimationSpeed		= 0.75f;
-	public float FlinchDuration		= 0.5f;
-	public float ThresholdRun		= 0.04f;
-	public float ThresholdIdle		= 0.015f;
-	public float ThresholdDash		= 1.6f;
-	public float ThresholdMoving	= 0.01f;
-	public float Threshold			= 10.0f;
-	public float DiagonalAngle		= 70.0f;
+	public float HP							= 10.0f;
+	public float MaxSpeed					= 10.0f;
+	public float DashSpeed					= 50.0f;
+	public float AnimationSpeed				= 0.75f;
+	public float FlinchDuration				= 0.5f;
+	public float ThresholdRun				= 0.04f;
+	public float ThresholdIdle				= 0.015f;
+	public float ThresholdDash				= 1.6f;
+	public float ThresholdMoving			= 0.01f;
+	public float Threshold					= 10.0f;
+	public float DiagonalAngle				= 70.0f;
+	public CharacterState CurrentStoryState	= CharacterState.StoryNone;
 
 	// Enum
 	public enum CharacterState
@@ -41,6 +42,10 @@ public class Character : MonoBehaviour
 		DownRight,
 		Right,
 		Left,
+
+		// Story Related
+		StoryNone,
+		StoryStuck,
 	};
 
 	// Public Getters
@@ -58,6 +63,7 @@ public class Character : MonoBehaviour
 	public CharacterState LastFrameOrientation	{ get; protected set; }
 	public CharacterState CurrentFlinchState	{ get; protected set; } = CharacterState.FlinchNone;
 	public CharacterState LastFrameFlinchState	{ get; protected set; }
+	public CharacterState LastFrameStoryState	{ get; protected set; }
 
 	// Protected
 	protected Animator anim;
@@ -90,14 +96,22 @@ public class Character : MonoBehaviour
 		// SpriteRenderer
 		spriteRenderer = GetComponent<SpriteRenderer>();
 
-		// Avatar State
+		// Character State
 		CurrentMovingState = CharacterState.Idle;
-		CurrentOrientation = CharacterState.DownLeft;
+		CurrentOrientation = CharacterState.DownRight;
 		SetSpriteDirection();
 	}
 
 	void Update()
 	{
+		if (CurrentStoryState == CharacterState.StoryStuck)
+		{
+			if (CurrentStoryState != LastFrameStoryState)
+			{
+				SetMovingAnimation(new List<string> { CurrentStoryState.ToString(), CurrentOrientation.ToString() });
+			}
+			return;
+		}
 		SetMovementValues();
 		MapState();
 
@@ -140,13 +154,6 @@ public class Character : MonoBehaviour
 	protected void MapState()
 	{
 		SetCurrentMovingState();
-
-		// Testing flinch
-		if (Input.GetKeyDown("c"))
-		{
-			CurrentFlinchState = CharacterState.Flinch;
-			CurrentMovingState = CharacterState.AnimationNone;
-		}
 
 		if (CurrentMovingState == CharacterState.Walk ||
 			CurrentMovingState == CharacterState.Run ||
@@ -237,6 +244,11 @@ public class Character : MonoBehaviour
 
 	protected void SetSpriteDirection()
 	{
+		if (CurrentStoryState == CharacterState.StoryStuck)
+		{
+			return;
+		}
+
 		Vector3 scale = transform.localScale;
 		switch (CurrentOrientation)
 		{
@@ -262,7 +274,6 @@ public class Character : MonoBehaviour
 	{
 		if (animationNameParts == null || animationNameParts.Count == 0)
 		{
-			Debug.LogError("Error: animationNameBits variable is null or empty!");
 			return;
 		}
 		StringBuilder animationNameBuilder = new StringBuilder();
@@ -276,10 +287,11 @@ public class Character : MonoBehaviour
 
 	protected void SetLastFramValues()
 	{
-		LastFrameOrientation		= CurrentOrientation;
-		LastFrameMovingState		= CurrentMovingState;
-		LastFramePosition			= transform.position;
-		LastFrameFlinchState		= CurrentFlinchState;
+		LastFrameOrientation	= CurrentOrientation;
+		LastFrameMovingState	= CurrentMovingState;
+		LastFramePosition		= transform.position;
+		LastFrameFlinchState	= CurrentFlinchState;
+		LastFrameStoryState		= CurrentStoryState;
 		if (LookAtTargetTransform != null)
 		{
 			LastFrameTargetPosistion = LookAtTargetTransform.position;

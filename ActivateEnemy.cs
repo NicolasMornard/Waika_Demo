@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class ActivateEnemy : MonoBehaviour
 {
@@ -14,14 +12,20 @@ public class ActivateEnemy : MonoBehaviour
 		avatar = FindObjectOfType<Avatar>();
 	}
 
+	private void Update()
+	{
+		if (Vector3.Distance(avatar.transform.position, transform.position) <= 3.0f)
+		{
+			EnemyToActivate.SetDetectionState(Enemy.EnemyState.LookingForAvatar);
+			Destroy(gameObject);
+		}
+	}
+
 	void OnTriggerEnter2D(Collider2D other)
 	{
 		if (other.gameObject.GetComponents<Avatar>() == null)
 		{
 			return;
 		}
-		avatar.SetEquipmentState(Avatar.AvatarState.EquipmentHammer);
-		EnemyToActivate.SetDetectionState(Enemy.EnemyState.LookingForAvatar);
-		gameObject.SetActive(false);
 	}
 }

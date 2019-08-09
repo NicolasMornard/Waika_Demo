@@ -10,13 +10,12 @@ public class EquipmentGiver : MonoBehaviour
 		avatar = FindObjectOfType<Avatar>();
 	}
 
-	void OnTriggerEnter2D(Collider2D other)
+	private void Update()
 	{
-		if (other.gameObject.GetComponents<Avatar>() == null)
+		if (Vector3.Distance(avatar.transform.position, transform.position) <= 2.3f)
 		{
-			return;
+			avatar.SetEquipmentState(Avatar.AvatarState.EquipmentHammer);
+			Destroy(gameObject);
 		}
-		avatar.SetEquipmentState(Avatar.AvatarState.EquipmentHammer);
-		gameObject.SetActive(false);
 	}
 }

@@ -6,8 +6,9 @@ using UnityEngine.SceneManagement;
 public class Avatar : Character
 {
 	// Public - Inspector
-	public float Dammage = 5.0f;
-	public float DammageSpecialAttack1 = 25.0f;
+	public float Dammage				= 5.0f;
+	public float DammageSpecialAttack1	= 25.0f;
+	public AvatarState DefaultEquipment	= AvatarState.EquipmentNone;
 
 	// Enum
 	public enum AvatarState
@@ -22,6 +23,9 @@ public class Avatar : Character
 		//Equipment
 		EquipmentNone,
 		EquipmentHammer,
+		// LookAtTargetState
+		LookAtAtTagetFree,
+		LookAtAtTagetLocked,
 	};
 
 	// Public Getters
@@ -31,11 +35,14 @@ public class Avatar : Character
 	public AvatarState LastFrameSlideState			{ get; private set; }
 	public AvatarState CurrentEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
 	public AvatarState LastFrameEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
+	public AvatarState CurrentLookAtTargetState		{ get; private set; } = AvatarState.LookAtAtTagetFree;
+	public AvatarState LastFrameLookAtTargetState	{ get; private set; } = AvatarState.LookAtAtTagetFree;
 
 	// Private
 	private float verticalInput;
 	private float horizontalInput;
 	private Vector2 boxColliderAttackSize;
+	private Vector3 lookAtTargetRelativePosition;
 
 	// Start is called before the first frame update
 	void Start()
@@ -43,6 +50,7 @@ public class Avatar : Character
 		boxColliderAttackSize = boxCollider2DList[1].size;
 		boxCollider2DList[1].size = new Vector2(0.0f, 0.0f);
 		CurrentAttackState = AvatarState.AttackNone;
+		CurrentEquipmentState = DefaultEquipment;
 		foreach (Transform child in transform.parent)
 		{
 			// TODO: replace "MovementTarget" with static readonly value
@@ -67,16 +75,29 @@ public class Avatar : Character
 		}
 		SetMovementValues();
 
+		if (CurrentLookAtTargetState == AvatarState.LookAtAtTagetLocked)
+		{
+			SetLookAtTargetPosition();
+		}
+
 		MapStateAvatar();
 		boxCollider2DList[0].enabled = CurrentMovingState != CharacterState.Dash;
 
 		SetAvatarAnimation();
 		SetSpriteDirection();
 		SetLastFramValuesAvatar();
-		Debug.Log(CurrentSlideState);
 	}
 
 	// Public Methods
+
+	public void SetLookAtTargetState(AvatarState lookAtTargetState, Vector3? relativePosition = null)
+	{
+		CurrentLookAtTargetState = lookAtTargetState;
+		if (lookAtTargetState == AvatarState.LookAtAtTagetLocked && relativePosition != null)
+		{
+			lookAtTargetRelativePosition = (Vector3)relativePosition;
+		}
+	}
 
 	public void SetEquipmentState(AvatarState equipmentState)
 	{
@@ -120,6 +141,11 @@ public class Avatar : Character
 		}
 	}
 
+	private void SetLookAtTargetPosition()
+	{
+		LookAtTargetTransform.position = transform.position + lookAtTargetRelativePosition;
+	}
+
 	public new void Die()
 	{
 		SceneManager.LoadScene("Level_1", LoadSceneMode.Single);
@@ -151,7 +177,7 @@ public class Avatar : Character
 	{
 		MapState();
 		// TODO: replace "" with static inputs
-		if (CurrentEquipmentState == AvatarState.EquipmentHammer)
+		if (CurrentEquipmentState == AvatarState.EquipmentHammer && CurrentAttackState == AvatarState.AttackNone)
 		{
 			if (Input.GetButton("Fire2"))
 			{
@@ -188,6 +214,9 @@ public class Avatar : Character
 		if (CurrentAttackState != LastFrameAttackState &&
 			CurrentAttackState != AvatarState.AttackNone)
 		{
+			Debug.Log("---");
+			Debug.Log(LastFrameAttackState);
+			Debug.Log(CurrentAttackState);
 			SetAttackAnimation();
 			boxCollider2DList[1].size = boxColliderAttackSize;
 			if (CurrentAttackState == AvatarState.SpecialAttack1)
@@ -255,5 +284,6 @@ public class Avatar : Character
 		LastFrameAttackState = CurrentAttackState;
 		LastFrameSlideState = CurrentSlideState;
 		LastFrameEquipmentState = CurrentEquipmentState;
+		LastFrameLookAtTargetState = CurrentLookAtTargetState;
 	}
 }

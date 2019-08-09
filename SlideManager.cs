@@ -25,14 +25,24 @@ public class SlideManager : MonoBehaviour
 
 	private void Update()
 	{
-		if (avatar.CurrentSlideState == Avatar.AvatarState.Slide)
+		if (Vector3.Distance(avatar.transform.position, transform.position) <= 3.0f && avatar.CurrentSlideState != Avatar.AvatarState.Slide)
+		{
+			avatar.SetSlideState(Avatar.AvatarState.Slide);
+			currentWaypointIndex = 0;
+			CurrentWaypointPosition = Waypoints[currentWaypointIndex].transform.position;
+			startTime = Time.time;
+			startJourneyPosition = avatar.transform.position;
+			journeyLength = Vector3.Distance(CurrentWaypointPosition, avatar.transform.position);
+			avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtAtTagetLocked, new Vector3(-1.0f, -1.0f, 0.0f));
+		}
+		else if (avatar.CurrentSlideState == Avatar.AvatarState.Slide)
 		{
 			HandleWaypoints();
 			MoveTowardWaypoint();
 		}
 	}
 
-	void OnTriggerEnter2D(Collider2D other)
+	void OnTriggerStay2D(Collider2D other)
 	{
 		if (Waypoints == null ||
 			Waypoints.Count == 0)
@@ -43,12 +53,6 @@ public class SlideManager : MonoBehaviour
 		{
 			return;
 		}
-		avatar.SetSlideState(Avatar.AvatarState.Slide);
-		currentWaypointIndex = 0;
-		CurrentWaypointPosition = Waypoints[currentWaypointIndex].transform.position;
-		startTime = Time.time;
-		startJourneyPosition = avatar.transform.position;
-		journeyLength = Vector3.Distance(CurrentWaypointPosition, avatar.transform.position);
 	}
 
 	private void HandleWaypoints()
@@ -65,6 +69,7 @@ public class SlideManager : MonoBehaviour
 			if (currentWaypointIndex >= Waypoints.Count)
 			{
 				avatar.EndSlide();
+				avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtAtTagetFree);
 				return;
 			}
 

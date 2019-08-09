@@ -14,14 +14,16 @@ public class SceneChanger : MonoBehaviour
 		avatar = FindObjectOfType<Avatar>();
 	}
 
-	void OnTriggerEnter2D(Collider2D other)
+	private void Update()
 	{
-		if (string.IsNullOrEmpty(NextScene) ||
-			other.gameObject.GetComponents<Avatar>() == null)
+		if (string.IsNullOrEmpty(NextScene))
 		{
 			return;
 		}
 
-		SceneManager.LoadScene(NextScene, LoadSceneMode.Single);
+		if (Vector3.Distance(avatar.transform.position, transform.position) <= 5.0f)
+		{
+			SceneManager.LoadScene(NextScene, LoadSceneMode.Single);
+		}
 	}
 }
