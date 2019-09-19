@@ -9,7 +9,8 @@ public class Character : MonoBehaviour
 {
 	// Public - Inspector
 	public float HP							= 10.0f;
-	public float MaxSpeed					= 10.0f;
+    public float Mana                       = 100f;
+    public float MaxSpeed					= 10.0f;
 	public float DashSpeed					= 50.0f;
 	public float AnimationSpeed				= 0.75f;
 	public float FlinchDuration				= 0.5f;

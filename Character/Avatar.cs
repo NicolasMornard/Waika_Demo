@@ -7,12 +7,10 @@ using static GamePlayManager;
 using static PlayerInput;
 
 using static ObjectStates;
-using System;
 
 public class Avatar : Character
 {
 	// Public - Inspector
-	public float Mana						= 100f;
 	public float Dammage					= 5.0f;
 	public float DammageSpecialAttack1		= 25.0f;
 	public float DammageProjectile			= 20.0f;
@@ -169,7 +167,7 @@ public class Avatar : Character
 
 	public new void Die()
 	{
-		SceneManager.LoadSceneAsync("Level_1", LoadSceneMode.Single);
+		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex, LoadSceneMode.Single);
 	}
 
 	// In the case of the Avatar, the Target is a point that it follows and turn toward.

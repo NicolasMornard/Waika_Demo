@@ -1,15 +1,13 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class HealthBarUi : MonoBehaviour
 {
-	private GameObject HealthBar;
-	private GameObject ManaBar;
-	private Image healthBar;
+	private readonly GameObject healthBar;
+	private readonly GameObject manaBar;
+	private Image healthBarImg;
+	private Image manaBarImg;
 	private float maxHealth;
-	private Image manaBar;
 	private float maxMana;
 
 	private const float min = 0.116f;
@@ -17,24 +15,31 @@ public class HealthBarUi : MonoBehaviour
 
 	void Start()
 	{
-		maxHealth = GameDirector.Avatar.HP;
-		healthBar = transform.Find("HealthBar").GetComponent<Image>();
-		maxMana = GameDirector.Avatar.Mana;
-		manaBar = transform.Find("ManaBar").GetComponent<Image>();
+		Debug.Assert(GameDirector.Avatar != null, "No avatar set in the scene");
+		maxHealth = GameDirector.Avatar.HP; //Récupérer à la place la valeur HP du parent (soit avatar, ou enemy)
+		Debug.Assert(transform.Find("HealthBar") != null, "Character does not have a healthbar");
+		healthBarImg = transform.Find("HealthBar").GetComponent<Image>();
+		if (transform.Find("ManaBar") != null)
+		{
+			maxMana = GameDirector.Avatar.Mana;
+			manaBarImg = transform.Find("ManaBar").GetComponent<Image>(); //Si besoin de manaBar, pour ce character. Sinon non
+		}
 	}
 	void Update()
 	{
-		Debug.Assert(maxHealth > 0, "maxHealth must be superior to 0");
-		Debug.Assert(maxMana > 0, "maxMana must be superior to 0");
-		float i;
-		float normalizedFloat;
+		Debug.Assert(maxHealth > 0, "Max Health must be greater than 0");
+		healthBarImg.fillAmount = GameDirector.Avatar.HP / maxHealth;
 
-		healthBar.fillAmount = GameDirector.Avatar.HP / maxHealth;
-		i = GameDirector.Avatar.Mana / maxMana;
+		if (manaBarImg != null)
+		{
+			Debug.Assert(maxMana > 0, "Max Mana must be greater than 0");
+			float i;
+			float adjustedFillAmount;
+			i = GameDirector.Avatar.Mana / maxMana;
+			adjustedFillAmount = (i * (max - min)) + min;
+			adjustedFillAmount = Mathf.Clamp(adjustedFillAmount, 0, 1);
 
-		//Calculate the normalized float;
-		normalizedFloat = (i * (max - min)) + min;
-
-		manaBar.fillAmount = normalizedFloat;
+			manaBarImg.fillAmount = adjustedFillAmount;
+		}
 	}
 }
