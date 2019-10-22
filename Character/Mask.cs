@@ -1,3 +1,3 @@
-﻿public class Mask : Enemy
+﻿public class Mask : NPC
 {
 }

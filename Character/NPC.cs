@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
+
 using UnityEngine;
 
 public class NPC : Character
@@ -6,113 +8,181 @@ public class NPC : Character
 	// Public - Inspector
 	public EnemyState DetectionStartingState	= EnemyState.DetectionIdle;
 	public EnemyState StartingGeneralState		= EnemyState.Idle;
-	public float Dammage = 5.0f;
+	public float Dammage						= 5.0f;
 	public float DistanceDetectionAvatar		= 10.0f;
-	public List<Transform> Waypoints;
-	public float DistanceToReachWaypoint		= 0.3f;
-	public bool LoopWaypoints = true;
 
 	// Enum
 	public enum EnemyState
 	{
 		// General State
-		Idle,
-		Search,
-		FollowPath,
-		Fight,
-		Flee,
+		Idle					= 0000000001,
+		Search					= 0000000002,
+		FollowPath				= 0000000004,
+		Fight					= 0000000008,
+		Flee					= 0000000010,
 
 		// Waypoint
-		WaypointNone,
-		ReachedWaypoint,
-		MovingToWaypoint,
+		WaypointNone			= 0000000020,
+		ReachedWaypoint			= 0000000040,
+		MovingToWaypoint		= 0000000080,
 
 		// Attack
-		AttackNone,
-		StandardAttack,
+		AttackNone				= 0000000100,
+		StandardAttack			= 0000000200,
 
 		//AvatarDetection
-		DetectionIdle,
-		LookingForAvatar,
-		DetectionPullingWay,
+		DetectionIdle			= 0000000400,
+		LookingForAvatar		= 0000000800,
+		DetectionPullingWay		= 0000001000,
 	};
 
 	// Public Getters
-	public EnemyState CurrentGeneralState		{ get; private set; }	= EnemyState.Idle;
-	public EnemyState CurrentAttackState		{ get; private set; }	= EnemyState.AttackNone;
-	public EnemyState LastFrameAttackState		{ get; private set; }	= EnemyState.AttackNone;
-	public EnemyState CurrentDetectionState		{ get; private set; }	= EnemyState.LookingForAvatar;
-	public EnemyState LastFrameDetectionState	{ get; private set; }	= EnemyState.LookingForAvatar;
-	public EnemyState CurrentWaypointState		{ get; private set; }	= EnemyState.ReachedWaypoint;
-	public EnemyState LastFrameWaypointState	{ get; private set; }	= EnemyState.ReachedWaypoint;
-	public Vector3 CurrentWaypointPosition		{ get; private set; }
+	public EnemyState CurrentGeneralState
+	{
+		get
+		{
+			return currentGeneralState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentGeneralState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public EnemyState CurrentDetectionState
+	{
+		get
+		{
+			return currentDetectionState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentDetectionState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public EnemyState CurrentAttackState
+	{
+		get
+		{
+			return currentAttackState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentAttackState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public EnemyState CurrentWaypointState
+	{
+		get
+		{
+			return currentWaypointState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentWaypointState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public Vector3 CurrentWaypointPosition
+	{
+		get
+		{
+			return currentWaypointPosition;
+		}
+		protected set
+		{
+			currentWaypointPosition = value;
+		}
+	}
 
 	//Protected
+	protected EnemyState currentGeneralState;
+	protected EnemyState currentAttackState;
+	protected EnemyState currentDetectionState;
+	protected EnemyState currentWaypointState;
+	protected Vector3 currentWaypointPosition;
+	protected EnemyState lastFrameAttackState;
+	protected EnemyState lastFrameDetectionState;
+	protected EnemyState lastFrameWaypointState;
 
 	// Private
-	private int currentWaypointIndex = 0;
-	private Vector3 startJourneyPosition;
-	private float startTime = 0.0f;
-	private float journeyLength = 0.0f;
+	private new void Awake()
+	{
+		base.Awake();
+		CurrentGeneralState		= EnemyState.Idle;
+		CurrentAttackState		= EnemyState.AttackNone;
+		CurrentDetectionState	= EnemyState.LookingForAvatar;
+		CurrentWaypointState	= EnemyState.ReachedWaypoint;
+		CurrentDetectionState	= DetectionStartingState;
+		CurrentGeneralState		= StartingGeneralState;
+
+		lastFrameAttackState	= EnemyState.AttackNone;
+		lastFrameDetectionState	= EnemyState.LookingForAvatar;
+		lastFrameWaypointState	= EnemyState.ReachedWaypoint;
+	}
 
 	void Start()
 	{
 		LookAtTargetTransform = GameDirector.Avatar.transform;
-		CurrentDetectionState = DetectionStartingState;
-		CurrentGeneralState = StartingGeneralState;
-
-		TriggerMove();
 	}
-
-	void OnDrawGizmos()
-	{
-		if (this is Epervier && LookAtTargetTransform != null)
-		{
-			Gizmos.color = new Color(1f, 0f, 0f, 0.5f);
-			Gizmos.DrawLine(transform.position, LookAtTargetTransform.position);
-		}
-	}
-
-	new protected void Update()
+	protected override void CharacterUpdate()
 	{
 		if (CurrentStoryState == CharacterState.StoryStuck)
 		{
-			if (CurrentStoryState != LastFrameStoryState)
+			if (CurrentStoryState != prevStoryState)
 			{
 				SetMovingAnimation(new List<string> { CurrentStoryState.ToString(), CurrentOrientation.ToString() });
 			}
-		return;
+			return;
 		}
 		SetMovementValues();
 		MapState();
 
 		SetSpriteDirection();
-		SetLastFramValues();
-		if (CurrentGeneralState == EnemyState.Idle)
-		{
-			return;
-		}
 		if (CurrentGeneralState != EnemyState.Flee)
 		{
 			DetectAvatar();
 		}
-		if (CurrentAttackState == EnemyState.AttackNone)
-		{
-			HandleWaypoints();
-			MoveTowardWaypoint();
-		}
 		else if (CurrentAttackState == EnemyState.StandardAttack &&
-			CurrentAttackState != LastFrameAttackState)
+			CurrentAttackState != lastFrameAttackState)
 		{
 			anim.SetTrigger(CurrentAttackState.ToString() + CurrentOrientation.ToString());
 		}
-		else if ((CurrentOrientation != LastFrameOrientation ||
-			CurrentMovingState != LastFrameMovingState) &&
-			CurrentMovingState != CharacterState.AnimationNone)
+		if (CurrentOrientation != prevOrientation ||
+			CurrentMovingState != prevMovingState)
 		{
 			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 		}
-		SetLastFramValuesEnemy();
 	}
 
 	public void SetGeneralState(EnemyState generalState)
@@ -138,6 +208,18 @@ public class NPC : Character
 	{
 		GameObject projectile = Instantiate(GamePlayManager.GPM.EpervierProjectile, transform.position, Quaternion.identity);
 		projectile.GetComponentInChildren<Projectile>().SetDirection(CurrentOrientation);
+	}
+
+	protected bool StateAllowed(EnemyState state)
+	{
+		foreach (CharacterAttributes.CharacterCapabilities capability in characterAttributes.Capabilities)
+		{
+			if (CharacterAttributes.StateAllowed(capability, state))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void SetDetectionState(EnemyState detectionState)
@@ -172,15 +254,14 @@ public class NPC : Character
 		{
 			ReceiveAttack(GameDirector.Avatar.DammageProjectile);
 			Destroy(other.transform.parent.gameObject);
-			if (this is Epervier && HP < 160)
+			if (this is Epervier && characterAttributes.HP < 160)
 			{
 				SetGeneralState(EnemyState.Flee);
 				CurrentAttackState = EnemyState.AttackNone;
-				TriggerMove();
 
 				CurrentMovingState = CharacterState.Walk;
-				if ((CurrentOrientation != LastFrameOrientation ||
-					CurrentMovingState != LastFrameMovingState))
+				if ((CurrentOrientation != prevOrientation ||
+					CurrentMovingState != prevMovingState))
 				{
 					SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 				}
@@ -190,77 +271,6 @@ public class NPC : Character
 		{
 			return;
 		}
-	}
-
-	private void TriggerMove()
-	{
-		if (Waypoints != null && Waypoints.Count > 0)
-		{
-			Vector3 newCurrentWaypointPosition = Waypoints[currentWaypointIndex].transform.position;
-			newCurrentWaypointPosition.z = transform.position.z;
-			CurrentWaypointPosition = newCurrentWaypointPosition;
-			CurrentWaypointState = EnemyState.MovingToWaypoint;
-			startTime = Time.time;
-			startJourneyPosition = transform.position;
-			journeyLength = Vector3.Distance(CurrentWaypointPosition, transform.position);
-		}
-	}
-
-	private void HandleWaypoints()
-	{
-		if (Waypoints == null ||
-			Waypoints.Count == 0)
-		{
-			return;
-		}
-		if (currentWaypointIndex >= Waypoints.Count)
-		{
-			if (LoopWaypoints)
-			{
-				currentWaypointIndex = 0;
-			}
-			else
-			{
-				if (this is Epervier)
-				{
-					SetGeneralState(EnemyState.Search);
-					DistanceDetectionAvatar = 2000;
-				}
-				return;
-			}
-		}
-
-		LookAtTargetTransform = Waypoints[currentWaypointIndex].transform;
-		if (CurrentWaypointState == EnemyState.ReachedWaypoint)
-		{
-			currentWaypointIndex++;
-			TriggerMove();
-		}
-
-		if (journeyLength <= DistanceToReachWaypoint ||
-			Vector3.Distance(CurrentWaypointPosition, transform.position) <= DistanceToReachWaypoint)
-		{
-			CurrentWaypointState = EnemyState.ReachedWaypoint;
-		}
-	}
-
-	private void MoveTowardWaypoint()
-	{
-		if (Waypoints == null ||
-			Waypoints.Count == 0)
-		{
-			return;
-		}
-		float speed = MaxSpeed;
-
-		// Distance moved = time * speed.
-		float distCovered = (Time.time - startTime) * speed;
-
-		// Fraction of journey completed = current distance divided by total distance.
-		float fracJourney = distCovered / journeyLength;
-
-		// Set our position as a fraction of the distance between the markers.
-		transform.position = Vector3.Lerp(startJourneyPosition, CurrentWaypointPosition, fracJourney);
 	}
 
 	private void DetectAvatar()
@@ -284,21 +294,29 @@ public class NPC : Character
 			CurrentAttackState = EnemyState.AttackNone;
 			CurrentWaypointState = EnemyState.MovingToWaypoint;
 			CurrentMovingState = CharacterState.Walk;
-			if (Waypoints != null && Waypoints.Count > 0)
-			{
-				LookAtTargetTransform = Waypoints[currentWaypointIndex].transform;
-			}
-			else
-			{
-				LookAtTargetTransform = null;
-			}
 		}
 	}
 
-	private void SetLastFramValuesEnemy()
+	protected override void SetLastFrameValues()
 	{
-		base.SetLastFramValues();
-		LastFrameWaypointState = CurrentWaypointState;
-		LastFrameAttackState = CurrentAttackState;
+		base.SetLastFrameValues();
+		lastFrameWaypointState = CurrentWaypointState;
+		lastFrameAttackState = CurrentAttackState;
+	}
+
+	public void StartFading()
+	{
+		StartCoroutine(FadeIn());
+	}
+
+	IEnumerator FadeIn()
+	{
+		for(float f = 0; f <= 1; f += 0.05f)
+		{
+			Color c = spriteRenderer.material.color;
+			c.a = f;
+			spriteRenderer.material.color = c;
+			yield return new WaitForSeconds(0.05f);
+		}
 	}
 }

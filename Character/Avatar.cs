@@ -5,7 +5,6 @@ using UnityEngine.SceneManagement;
 
 using static GamePlayManager;
 using static PlayerInput;
-
 using static ObjectStates;
 
 public class Avatar : Character
@@ -17,66 +16,190 @@ public class Avatar : Character
 	public AvatarState DefaultEquipment		= AvatarState.EquipmentNone;
 	public float AnimationFrondeAttackSpeed	= 0.5f;
 	public GameObject MovementTarget;
+
 	// Enum
 	public enum AvatarState
 	{
 		// Slide
-		SlideNone,
-		Slide,
+		SlideNone				= 0000000001,
+		Slide					= 0000000002,
 		// Attack
-		AttackNone,
-		FrondeAttack,
-		StandardAttack,
-		SpecialAttack1,
+		AttackNone				= 0000000004,
+		FrondeAttack			= 0000000008,
+		StandardAttack			= 0000000010,
+		SpecialAttack1			= 0000000020,
 		// Equipment
-		EquipmentNone,
-		EquipmentFronde,
-		EquipmentHammer,
+		EquipmentNone			= 0000000040,
+		EquipmentFronde			= 0000000080,
+		EquipmentHammer			= 0000000100,
 		// LookAtTargetState
-		LookAtAtTagetFree,
-		LookAtAtTagetLocked,
+		LookAtTagetFree			= 0000000200,
+		LookAtTagetLocked		= 0000000400,
+		// Interact
+		InteractionNone			= 0000000800,
+		InteractionDialogue		= 0000001000,
+		InteractionLearnWord	= 0000002000,
 	};
 
 	// Public Getters
-	public AvatarState CurrentAttackState			{ get; private set; }
-	public AvatarState LastFrameAttackState			{ get; private set; }
-	public AvatarState CurrentSlideState			{ get; private set; }
-	public AvatarState LastFrameSlideState			{ get; private set; }
-	public AvatarState CurrentEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
-	public AvatarState LastFrameEquipmentState		{ get; private set; } = AvatarState.EquipmentNone;
-	public AvatarState CurrentLookAtTargetState		{ get; private set; } = AvatarState.LookAtAtTagetFree;
-	public AvatarState LastFrameLookAtTargetState	{ get; private set; } = AvatarState.LookAtAtTagetFree;
+	public AvatarState CurrentAttackState
+	{
+		get
+		{
+			return currentAttackState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentAttackState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public AvatarState CurrentSlideState
+	{
+		get
+		{
+			return currentSlideState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentSlideState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public AvatarState CurrentEquipmentState
+	{
+		get
+		{
+			return currentEquipmentState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentEquipmentState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public AvatarState CurrentLookAtTargetState
+	{
+		get
+		{
+			return currentLookAtTargetState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentLookAtTargetState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public AvatarState CurrentInteractionState
+	{
+		get
+		{
+			return currentInteractionState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentInteractionState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+
+	// Protected
+	protected AvatarState currentAttackState;
+	protected AvatarState currentSlideState;
+	protected AvatarState currentEquipmentState;
+	protected AvatarState currentLookAtTargetState;
+	protected AvatarState currentInteractionState;
+
+	protected AvatarState prevAttackState;
+	protected AvatarState prevEquipmentState	= AvatarState.EquipmentNone;
+	protected AvatarState prevSlideState;
+	protected AvatarState prevLookAtTargetState	= AvatarState.LookAtTagetFree;
+	protected AvatarState prevInteractionState	= AvatarState.InteractionNone;
 
 	// Private
 	private Vector2 boxColliderAttackSize;
 	private Vector3 lookAtTargetRelativePosition = new Vector3(-1.0f, -1.0f, 0.0f);
-
-	// Start is called before the first frame update
-	void Start()
+	private bool CanMove
 	{
-		boxColliderAttackSize = boxCollider2DList[1].size;
-		boxCollider2DList[1].size = new Vector2(0.0f, 0.0f);
+		get
+		{
+			return CurrentAttackState != AvatarState.SpecialAttack1 &&
+				CurrentAttackState != AvatarState.FrondeAttack &&
+				CurrentSlideState == AvatarState.SlideNone &&
+				CurrentInteractionState == AvatarState.InteractionNone;
+		}
+	}
+	private bool CanSetLookAtTargetPosition
+	{
+		get
+		{
+			return CurrentLookAtTargetState == AvatarState.LookAtTagetLocked ||
+			CurrentInteractionState == AvatarState.InteractionNone;
+		}
+	}
+
+	private new void Awake()
+	{
+		base.Awake();
+		CurrentEquipmentState = AvatarState.EquipmentNone;
+		CurrentLookAtTargetState = AvatarState.LookAtTagetFree;
+		CurrentInteractionState = AvatarState.InteractionNone;
+		CurrentSlideState = AvatarState.SlideNone;
 		CurrentAttackState = AvatarState.AttackNone;
 		CurrentEquipmentState = DefaultEquipment;
+
+		boxColliderAttackSize = boxCollider2DList[0].size;
+		boxCollider2DList[0].size = new Vector2(0.0f, 0.0f);
 		LookAtTargetTransform = MovementTarget.transform;
 		LookAtTargetTransform.position = new Vector3(transform.position.x - 1.0f,
 			transform.position.y - 1.0f,
 			transform.position.z);
-		SetLastFramValuesAvatar();
 	}
 
-	// Update is called once per frame
-	new void Update()
+	protected override void CharacterUpdate()
 	{
-		if (CurrentAttackState != AvatarState.SpecialAttack1 &&
-			CurrentAttackState != AvatarState.FrondeAttack &&
-			CurrentSlideState == AvatarState.SlideNone)
+		if (CanMove)
 		{
 			MoveAvatar();
 		}
 		SetMovementValues();
 
-		if (CurrentLookAtTargetState == AvatarState.LookAtAtTagetLocked)
+		if (CanSetLookAtTargetPosition)
 		{
 			SetLookAtTargetPosition();
 		}
@@ -86,7 +209,6 @@ public class Avatar : Character
 
 		SetAvatarAnimation();
 		SetSpriteDirection();
-		SetLastFramValuesAvatar();
 	}
 
 	// Public Methods
@@ -94,7 +216,7 @@ public class Avatar : Character
 	public void SetLookAtTargetState(AvatarState lookAtTargetState, Vector3? relativePosition = null)
 	{
 		CurrentLookAtTargetState = lookAtTargetState;
-		if (lookAtTargetState == AvatarState.LookAtAtTagetLocked && relativePosition != null)
+		if (lookAtTargetState == AvatarState.LookAtTagetLocked && relativePosition != null)
 		{
 			lookAtTargetRelativePosition = (Vector3)relativePosition;
 		}
@@ -109,6 +231,10 @@ public class Avatar : Character
 	{
 		CurrentSlideState = slideState;
 	}
+	public void SetInteractionState(AvatarState interactionState)
+	{
+		CurrentInteractionState = interactionState;
+	}
 
 	public void LaunchFrondeProjectile()
 	{
@@ -120,9 +246,9 @@ public class Avatar : Character
 	{
 		CurrentAttackState = AvatarState.AttackNone;
 		CurrentMovingState = CharacterState.Idle;
-		anim.speed = AnimationSpeed;
-		boxCollider2DList[1].size = new Vector2(0.0f, 0.0f);
-		//SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
+		anim.speed = characterAttributes.AnimationSpeed;
+		boxCollider2DList[0].size = new Vector2(0.0f, 0.0f);
+		SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 		SetSpriteDirection();
 	}
 
@@ -147,13 +273,31 @@ public class Avatar : Character
 			return;
 		}
 	}
+	protected bool StateAllowed(AvatarState state)
+	{
+		foreach (CharacterAttributes.CharacterCapabilities capability in characterAttributes.Capabilities)
+		{
+			if (CharacterAttributes.StateAllowed(capability, state))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void MoveAvatar()
 	{
 		Vector2 targetVelocity = new Vector2(PI.HorizontalInput, PI.VerticalInput);
-		rigidbodySprite.velocity = targetVelocity * MaxSpeed;
+		//if the vector's length is upper than 1
+		if (targetVelocity.magnitude > 1)
+		{
+			//normalize it <=> set to 1
+			targetVelocity.Normalize();
+		}
+
+		rigidbodySprite.velocity = targetVelocity * characterAttributes.MaxSpeed;
 
 		SetTargetPosition();
-
 		if (PI.Dash)
 		{
 			Dash();
@@ -189,13 +333,13 @@ public class Avatar : Character
 	private void Dash()
 	{
 		Vector2 targetVelocity = new Vector2(PI.HorizontalInput, PI.VerticalInput);
-		rigidbodySprite.velocity = targetVelocity * MaxSpeed * DashSpeed;
+		rigidbodySprite.velocity = targetVelocity * characterAttributes.MaxSpeed * characterAttributes.DashSpeed;
 	}
 
 	private void MapStateAvatar()
 	{
 		MapState();
-		if (IsWeaponEquiped() && CurrentAttackState == AvatarState.AttackNone)
+		if (CurrentInteractionState == AvatarState.InteractionNone && IsWeaponEquiped && CurrentAttackState == AvatarState.AttackNone)
 		{
 			if (PI.Fire2 && CurrentEquipmentState == AvatarState.EquipmentHammer)
 			{
@@ -204,11 +348,7 @@ public class Avatar : Character
 			}
 			else if (PI.Fire1)
 			{
-				if (CurrentEquipmentState == AvatarState.EquipmentFronde &&
-					(CurrentOrientation == ObjectState.DownLeft ||
-					CurrentOrientation == ObjectState.UpLeft ||
-					CurrentOrientation == ObjectState.DownRight ||
-					CurrentOrientation == ObjectState.UpRight))
+				if (CurrentEquipmentState == AvatarState.EquipmentFronde)
 				{
 					CurrentAttackState = AvatarState.FrondeAttack;
 				}
@@ -221,15 +361,12 @@ public class Avatar : Character
 		}
 	}
 
-	private bool IsWeaponEquiped()
-	{
-		return CurrentEquipmentState == AvatarState.EquipmentFronde ||
-			CurrentEquipmentState == AvatarState.EquipmentHammer;
-	}
+	private bool IsWeaponEquiped { get { return CurrentEquipmentState == AvatarState.EquipmentFronde ||
+												CurrentEquipmentState == AvatarState.EquipmentHammer; } }
 
 	private void SetAvatarAnimation()
 	{
-		if (CurrentFlinchState != LastFrameFlinchState &&
+		if (CurrentFlinchState != prevFlinchState &&
 			CurrentFlinchState != CharacterState.FlinchNone)
 		{
 			SetFlinchAnimation();
@@ -238,7 +375,7 @@ public class Avatar : Character
 
 		if (CurrentSlideState != AvatarState.SlideNone)
 		{
-			if (CurrentSlideState != LastFrameSlideState)
+			if (CurrentSlideState != prevSlideState)
 			{
 				SetSlideAnimation();
 			}
@@ -246,11 +383,11 @@ public class Avatar : Character
 			return;
 		}
 
-		if (CurrentAttackState != LastFrameAttackState &&
+		if (CurrentAttackState != prevAttackState &&
 			CurrentAttackState != AvatarState.AttackNone)
 		{
 			SetAttackAnimation();
-			boxCollider2DList[1].size = boxColliderAttackSize;
+			boxCollider2DList[0].size = boxColliderAttackSize;
 			if (CurrentAttackState == AvatarState.SpecialAttack1 ||
 				CurrentAttackState == AvatarState.FrondeAttack)
 			{
@@ -263,9 +400,9 @@ public class Avatar : Character
 			return;
 		}
 
-		if (CurrentOrientation != LastFrameOrientation ||
-			CurrentMovingState != LastFrameMovingState &&
-			CurrentMovingState != CharacterState.AnimationNone)
+		if (CurrentOrientation != prevOrientation ||
+			(CurrentMovingState != prevMovingState &&
+			CurrentMovingState != CharacterState.AnimationNone))
 		{
 			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
 			SetSpriteDirection();
@@ -307,14 +444,8 @@ public class Avatar : Character
 		switch (CurrentAttackState)
 		{
 			case AvatarState.FrondeAttack:
-				if (CurrentOrientation == ObjectState.DownLeft ||
-					CurrentOrientation == ObjectState.UpLeft ||
-					CurrentOrientation == ObjectState.DownRight ||
-					CurrentOrientation == ObjectState.UpRight)
-				{
-					anim.speed = AnimationFrondeAttackSpeed;
-					anim.SetTrigger(CurrentAttackState.ToString() + CurrentOrientation.ToString());
-				}
+				anim.speed = AnimationFrondeAttackSpeed;
+				anim.SetTrigger(CurrentAttackState.ToString() + CurrentOrientation.ToString());
 				break;
 			case AvatarState.StandardAttack:
 				anim.SetTrigger(CurrentAttackState.ToString() + CurrentOrientation.ToString());
@@ -325,12 +456,13 @@ public class Avatar : Character
 		}
 	}
 
-	private void SetLastFramValuesAvatar()
+	protected override void SetLastFrameValues()
 	{
-		SetLastFramValues();
-		LastFrameAttackState = CurrentAttackState;
-		LastFrameSlideState = CurrentSlideState;
-		LastFrameEquipmentState = CurrentEquipmentState;
-		LastFrameLookAtTargetState = CurrentLookAtTargetState;
+		base.SetLastFrameValues();
+		prevAttackState = CurrentAttackState;
+		prevSlideState = CurrentSlideState;
+		prevEquipmentState = CurrentEquipmentState;
+		prevLookAtTargetState = CurrentLookAtTargetState;
+		prevInteractionState = CurrentInteractionState;
 	}
 }

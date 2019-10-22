@@ -33,6 +33,10 @@ public class GameDirector : MonoBehaviour
 		// Triggering loaded scene
 		sceneLoaderAsync.allowSceneActivation = true;
 	}
+	public void LoadScene(string sceneToLoad)
+	{
+		SceneManager.LoadScene(sceneToLoad, LoadSceneMode.Single);
+	}
 	private IEnumerator LoadAsyncScene(string sceneToLoad)
 	{
 		// Loading the next scene in the background so that the change will be faster when triggered

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 
 using UnityEngine;
@@ -8,47 +9,61 @@ using static ObjectStates;
 public class Character : MonoBehaviour
 {
 	// Public - Inspector
-	public float HP							= 10.0f;
-    public float Mana                       = 100f;
-    public float MaxSpeed					= 10.0f;
-	public float DashSpeed					= 50.0f;
-	public float AnimationSpeed				= 0.75f;
-	public float FlinchDuration				= 0.5f;
-	public float ThresholdRun				= 0.04f;
-	public float ThresholdIdle				= 0.015f;
-	public float ThresholdDash				= 1.6f;
-	public float ThresholdMoving			= 0.01f;
-	public float Threshold					= 10.0f;
-	public float DiagonalAngle				= 70.0f;
 	public CharacterState CurrentStoryState	= CharacterState.StoryNone;
 
 	// Enum
 	public enum CharacterState
 	{
 		// Moving
-		AnimationNone, // When moving animation is suspended for attack or other special moves
-		Idle,
-		Walk,
-		Run,
-		Dash,
+		AnimationNone	= 0000000001, // When moving animation is suspended for attack or other special moves
+		Idle			= 0000000002,
+		Walk			= 0000000004,
+		Run				= 0000000008,
+		Fly				= 0000000010,
+		Dash			= 0000000020,
 
 		// Flinch
-		FlinchNone,
-		Flinch,
+		FlinchNone		= 0000000040,
+		Flinch			= 0000000080,
 
 		// Story Related
-		StoryNone,
-		StoryStuck,
+		StoryNone		= 0000000100,
+		StoryStuck		= 0000000200,
+
 	};
 
 	// Public Getters
 	public float CurrentSpeed				{ get; protected set; }
 	public Vector3 CurrentDirection			{ get; protected set; }
 	public float CurrentDirectionAngle2D	{ get; protected set; }
-	public Vector3 LastFramePosition		{ get; protected set; }
 	public Transform LookAtTargetTransform	{ get; protected set; }
-	public Vector3 LastFrameTargetPosistion	{ get; protected set; }
+	public bool IsAlive() { return characterAttributes.HP > 0; }
 
+	public float HP
+	{
+		get
+		{
+			return characterAttributes.HP;
+		}
+	}
+	public float Mana
+	{
+		get
+		{
+			return characterAttributes.Mana;
+		}
+	}
+	public float MaxSpeed
+	{
+		get
+		{
+			return characterAttributes.MaxSpeed;
+		}
+		set
+		{
+			characterAttributes.MaxSpeed = value;
+		}
+	}
 	public ObjectState CurrentOrientation
 	{
 		get
@@ -58,34 +73,81 @@ public class Character : MonoBehaviour
 	}
 
 	// State
-	public CharacterState CurrentMovingState	{ get; protected set; }
-	public CharacterState LastFrameMovingState	{ get; protected set; }
-	public float LastFrameDirectionAngle2D		{ get; protected set; }
-	public ObjectState LastFrameOrientation		{ get; protected set; }
-	public CharacterState CurrentFlinchState	{ get; protected set; } = CharacterState.FlinchNone;
-	public CharacterState LastFrameFlinchState	{ get; protected set; }
-	public CharacterState LastFrameStoryState	{ get; protected set; }
+	public CharacterState CurrentMovingState	{
+		get
+		{
+			return currentMovingState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentMovingState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
+	public CharacterState CurrentFlinchState
+	{
+		get
+		{
+			return currentFlinchState;
+		}
+		protected set
+		{
+			if (StateAllowed(value))
+			{
+				currentFlinchState = value;
+			}
+			else
+			{
+				Debug.LogWarning("State '" + value + "' is not allowed for "
+					+ transform.root.name + ". Check the Capabilities");
+			}
+		}
+	}
 
 	// Protected
+	protected Vector3 prevPos;
+	protected CharacterState prevMovingState;
+	protected float prevDirectionAngle2D;
+	protected ObjectState prevOrientation;
+	protected CharacterState prevFlinchState;
+	protected CharacterState prevStoryState;
+	protected Vector3 prevTargetPosistion;
+
+	protected CharacterAttributes characterAttributes;
 	protected Animator anim;
 	protected Rigidbody2D rigidbodySprite;
 	protected BoxCollider2D[] boxCollider2DList;
 	protected SpriteRenderer spriteRenderer;
 
+	// state
+	protected CharacterState currentMovingState;
+	protected CharacterState currentFlinchState;
+
 	// Private
 	private int flinchTimer = 0;
-	private readonly Vector2 VELOCITY_STOP = new Vector2(0.0f, 0.0f);
 
-	void Awake()
+	protected void Awake()
 	{
-		// Aniamtion component
+		// CharacterAttributes
+		characterAttributes = GetComponent<CharacterAttributes>();
+		Debug.Assert(characterAttributes != null, transform.root.name + "Does not have a CharacterAttribute class!");
+
+		CurrentFlinchState = CharacterState.FlinchNone;
+
+		// Animation component
 		anim = GetComponent<Animator>();
 		anim.enabled = true;
-		anim.speed = AnimationSpeed;
+		anim.speed = characterAttributes.AnimationSpeed;
 
 		// Rigidbody2D
 		rigidbodySprite = GetComponent<Rigidbody2D>();
-		LastFramePosition = transform.position;
 
 		// BoxCollider2D
 		boxCollider2DList = GetComponents<BoxCollider2D>();
@@ -97,32 +159,14 @@ public class Character : MonoBehaviour
 		CurrentMovingState = CharacterState.Idle;
 		//CurrentOrientation = ObjectState.DownRight;
 		SetSpriteDirection();//
-	}
 
-	protected void Update()
-	{
-		if (CurrentStoryState == CharacterState.StoryStuck)
-		{
-			if (CurrentStoryState != LastFrameStoryState)
-			{
-				SetMovingAnimation(new List<string> { CurrentStoryState.ToString(), CurrentOrientation.ToString() });
-			}
-			return;
-		}
-		SetMovementValues();
-		MapState();
-		if ((CurrentOrientation != LastFrameOrientation ||
-			CurrentMovingState != LastFrameMovingState) &&
-			CurrentMovingState != CharacterState.AnimationNone)
-		{
-			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
-		}
-		SetSpriteDirection();
-		SetLastFramValues();
+		StartCoroutine(ValuesUpdate());
 	}
 
 	private void FixedUpdate()
 	{
+		SetMovementValues();
+		MapState();
 		HandleFlinch();
 	}
 
@@ -131,7 +175,7 @@ public class Character : MonoBehaviour
 	public void ReceiveAttack(float dammage = 0.0f)
 	{
 		CurrentFlinchState = CharacterState.Flinch;
-		HP -= dammage;
+		characterAttributes.HP -= dammage;
 	}
 
 	public void EndFlinch()
@@ -141,26 +185,23 @@ public class Character : MonoBehaviour
 		SetSpriteDirection();
 	}
 
-	// Protected Methods
+	public void SetLookAtTargetTransform(Transform value)
+	{
+		LookAtTargetTransform = value;
+	}
 
+	// Protected Methods
 	protected void MapState()
 	{
 		SetCurrentMovingState();
 	}
 
-	protected void CalculateCurrentSpeed()
-	{
-		CurrentSpeed = (transform.position - LastFramePosition).magnitude;
-	}
-
 	protected void SetMovementValues()
 	{
-		CalculateCurrentDirection();
 		CalculateCurrentDirectionAngle2D();
-		CalculateCurrentSpeed();
 	}
 
-	protected void CalculateCurrentDirection()
+	protected void CalculateCurrentDirection(Vector3 prevPos)
 	{
 		if (LookAtTargetTransform != null)
 		{
@@ -168,8 +209,9 @@ public class Character : MonoBehaviour
 		}
 		else
 		{
-			CurrentDirection = LastFramePosition - transform.position;
+			CurrentDirection = prevPos - transform.position;
 		}
+		Debug.Log(CurrentDirection);
 	}
 
 	protected void CalculateCurrentDirectionAngle2D()
@@ -179,34 +221,17 @@ public class Character : MonoBehaviour
 		{
 			CurrentDirectionAngle2D *= -1;
 		}
+		Debug.Log(CurrentDirectionAngle2D);
 	}
-
 	protected void SetSpriteDirection()
 	{
 		if (CurrentStoryState == CharacterState.StoryStuck)
 		{
 			return;
 		}
-
-		Vector3 scale = transform.localScale;
-		switch (CurrentOrientation)
-		{
-			case ObjectState.UpLeft:
-			case ObjectState.Left:
-			case ObjectState.DownLeft:
-				if (scale.x > 0)
-				{
-					scale.x *= -1;
-				}
-				break;
-			default:
-				if (scale.x < 0)
-				{
-					scale.x *= -1;
-				}
-				break;
-		}
-		transform.localScale = scale;
+		spriteRenderer.flipX = CurrentOrientation == ObjectState.UpLeft ||
+			CurrentOrientation == ObjectState.Left ||
+			CurrentOrientation == ObjectState.DownLeft;
 	}
 
 	protected void SetMovingAnimation(List<string> animationNameParts)
@@ -216,25 +241,25 @@ public class Character : MonoBehaviour
 			return;
 		}
 		StringBuilder animationNameBuilder = new StringBuilder();
-		foreach (string animationNameBit in animationNameParts)
+		foreach (string animationNamepart in animationNameParts)
 		{
-			animationNameBuilder.Append(animationNameBit);
+			animationNameBuilder.Append(animationNamepart);
 		}
 
 		anim.SetTrigger(animationNameBuilder.ToString());
 	}
 
-	protected void SetLastFramValues()
+	protected virtual void SetLastFrameValues()
 	{
-		LastFrameDirectionAngle2D	= CurrentDirectionAngle2D;
-		LastFrameOrientation		= CurrentOrientation;
-		LastFrameMovingState		= CurrentMovingState;
-		LastFramePosition			= transform.position;
-		LastFrameFlinchState		= CurrentFlinchState;
-		LastFrameStoryState			= CurrentStoryState;
+		prevPos = transform.position;
+		prevMovingState = CurrentMovingState;
+		prevDirectionAngle2D = CurrentDirectionAngle2D;
+		prevOrientation = CurrentOrientation;
+		prevFlinchState = CurrentFlinchState;
+		prevStoryState = CurrentStoryState;
 		if (LookAtTargetTransform != null)
 		{
-			LastFrameTargetPosistion = LookAtTargetTransform.position;
+			prevTargetPosistion = LookAtTargetTransform.position;
 		}
 	}
 
@@ -248,8 +273,19 @@ public class Character : MonoBehaviour
 		Destroy(gameObject);
 	}
 
-	// Private Methods
+	protected bool StateAllowed(CharacterState state)
+	{
+		foreach (CharacterAttributes.CharacterCapabilities capability in characterAttributes.Capabilities)
+		{
+			if (CharacterAttributes.StateAllowed(capability, state))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 
+	// Private Methods
 	private void SetCurrentMovingState()
 	{
 		// We don't execute this if the animation is suspended
@@ -257,17 +293,31 @@ public class Character : MonoBehaviour
 		{
 			return;
 		}
-		if (CurrentSpeed < ThresholdIdle)
+		if (CurrentSpeed < characterAttributes.ThresholdIdle)
 		{
 			CurrentMovingState = CharacterState.Idle;
 		}
-		else if (CurrentSpeed < ThresholdRun)
+		else if (CurrentSpeed < characterAttributes.ThresholdRun)
 		{
-			CurrentMovingState = CharacterState.Walk;
+			if (this is Epervier)
+			{
+				CurrentMovingState = CharacterState.Fly;
+			}
+			else
+			{
+				CurrentMovingState = CharacterState.Walk;
+			}
 		}
-		else if (CurrentSpeed < ThresholdDash)
+		else if (CurrentSpeed < characterAttributes.ThresholdDash)
 		{
-			CurrentMovingState = CharacterState.Run;
+			if (this is Epervier)
+			{
+				CurrentMovingState = CharacterState.Fly;
+			}
+			else
+			{
+				CurrentMovingState = CharacterState.Run;
+			}
 		}
 		else
 		{
@@ -276,14 +326,54 @@ public class Character : MonoBehaviour
 	}
 
 	// Private methods
+	protected IEnumerator ValuesUpdate()
+	{
+		while (Application.isPlaying)
+		{
+			SetLastFrameValues();
 
-	private void HandleFlinch()
+			// Wait until the end of the frame
+			yield return new WaitForEndOfFrame();
+
+			// Calculate velocity: Velocity = DeltaPosition / DeltaTime
+			Vector3 currVel = (prevPos - transform.position) / Time.deltaTime;
+			CurrentSpeed = currVel.sqrMagnitude;
+			CalculateCurrentDirection(prevPos);
+			CalculateCurrentDirectionAngle2D();
+			if (CurrentStoryState == CharacterState.StoryStuck)
+			{
+				if (CurrentStoryState != prevStoryState)
+				{
+					SetMovingAnimation(new List<string> { CurrentStoryState.ToString(), CurrentOrientation.ToString() });
+				}
+			}
+			else
+			{
+				CharacterUpdate();
+			}
+			
+		}
+	}
+
+	protected virtual void CharacterUpdate()
+	{
+		if ((CurrentOrientation != prevOrientation ||
+					CurrentMovingState != prevMovingState) &&
+					CurrentMovingState != CharacterState.AnimationNone)
+		{
+			Debug.Log(CurrentMovingState.ToString() + " " + CurrentOrientation.ToString());
+			SetMovingAnimation(new List<string> { CurrentMovingState.ToString(), CurrentOrientation.ToString() });
+		}
+		SetSpriteDirection();
+	}
+
+		private void HandleFlinch()
 	{
 		if (CurrentFlinchState == CharacterState.Flinch)
 		{
-			if (flinchTimer >= FlinchDuration * (1.0f / Time.deltaTime))
+			if (flinchTimer >= characterAttributes.FlinchDuration * (1.0f / Time.deltaTime))
 			{
-				if (HP <= 0.0f)
+				if (characterAttributes.HP <= 0.0f)
 				{
 					Die();
 				}

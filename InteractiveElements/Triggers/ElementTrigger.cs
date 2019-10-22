@@ -17,6 +17,7 @@ public class ElementTrigger : MonoBehaviour
 		}
 	}
 	// Creating for children classes
+	protected bool isTriggered = false;
 	protected virtual void TriggerAction()
 	{
 	}

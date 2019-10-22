@@ -64,8 +64,9 @@ public class PlayerInput : MonoBehaviour
 	public const string FIRE1_INPUT_NAME = "Fire1";
 	public const string FIRE2_INPUT_NAME = "Fire2";
 	public const string DASH_INPUT_NAME = "space";
+    //public const string DASH_INPUT_NAME = "space";
 
-	void Awake()
+    void Awake()
 	{
 		if (PI != null)
 		{

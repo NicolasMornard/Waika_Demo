@@ -10,11 +10,10 @@ public class AvatarCamera : MonoBehaviour
 		// Following Avatar if no target set
 		if (TargetTransform == null)
 		{
-			TargetTransform = FindObjectOfType<Avatar>().transform;
+			TargetTransform = GameDirector.Avatar.transform;
 		}
 	}
 
-	// Update is called once per frame
 	void LateUpdate()
 	{
 		// Following Target

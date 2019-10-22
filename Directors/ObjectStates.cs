@@ -36,7 +36,8 @@ public class ObjectStates : MonoBehaviour
 				return new Vector3(-1.0f, 0.0f, 0.0f);
 			case ObjectState.UpLeft:
 				return new Vector3(-1.0f, 1.0f, 0.0f);
+			default:
+				return Vector3.zero;
 		}
-		return Vector3.zero;
 	}
 }

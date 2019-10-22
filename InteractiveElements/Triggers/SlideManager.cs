@@ -19,7 +19,7 @@ public class SlideManager : ElementTrigger
 
 	private void Update()
 	{
-		if (GameDirector.Avatar.CurrentSlideState == Avatar.AvatarState.Slide)
+		if (isTriggered && GameDirector.Avatar.CurrentSlideState == Avatar.AvatarState.Slide)
 		{
 			HandleWaypoints();
 			MoveTowardWaypoint();
@@ -27,29 +27,37 @@ public class SlideManager : ElementTrigger
 	}
 	protected override void TriggerAction()
 	{
-		if (Waypoints == null ||
-			Waypoints.Count == 0)
-		{
-			return;
-		}
-
-		if (GameDirector.Avatar.CurrentSlideState != Avatar.AvatarState.Slide)
-		{
-			GameDirector.Avatar.SetSlideState(Avatar.AvatarState.Slide);
-			currentWaypointIndex = 0;
-			CurrentWaypointPosition = Waypoints[currentWaypointIndex].transform.position;
-			startTime = Time.time;
-			startJourneyPosition = GameDirector.Avatar.transform.position;
-			journeyLength = Vector3.Distance(CurrentWaypointPosition, GameDirector.Avatar.transform.position);
-			GameDirector.Avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtAtTagetLocked, new Vector3(-1.0f, -1.0f, 0.0f));
-		}
+        TriggerSlide();
 	}
+
+    protected void TriggerSlide()
+    {
+        if (Waypoints == null ||
+            Waypoints.Count == 0)
+        {
+            isTriggered = false;
+            return;
+        }
+
+        if (GameDirector.Avatar.CurrentSlideState != Avatar.AvatarState.Slide)
+        {
+            isTriggered = true;
+            GameDirector.Avatar.SetSlideState(Avatar.AvatarState.Slide);
+            currentWaypointIndex = 0;
+            CurrentWaypointPosition = Waypoints[currentWaypointIndex].transform.position;
+            startTime = Time.time;
+            startJourneyPosition = GameDirector.Avatar.transform.position;
+            journeyLength = Vector3.Distance(CurrentWaypointPosition, GameDirector.Avatar.transform.position);
+            GameDirector.Avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtTagetLocked, new Vector3(-1.0f, -1.0f, 0.0f));
+        }
+    }
 
 	private void HandleWaypoints()
 	{
 		if (Waypoints == null ||
 			Waypoints.Count == 0)
 		{
+			isTriggered = false;
 			return;
 		}
 
@@ -58,8 +66,9 @@ public class SlideManager : ElementTrigger
 		{
 			if (currentWaypointIndex >= Waypoints.Count)
 			{
+				isTriggered = false;
 				GameDirector.Avatar.EndSlide();
-				GameDirector.Avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtAtTagetFree);
+				GameDirector.Avatar.SetLookAtTargetState(Avatar.AvatarState.LookAtTagetFree);
 				return;
 			}
 
